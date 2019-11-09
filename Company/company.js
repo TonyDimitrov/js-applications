@@ -1,31 +1,35 @@
 class Company {
 
     constructor() {
-        this._departments;
+        this._departments = [];
     }
 
     get departments() {
         return this._departments;
     }
 
+    set departments(employee) {
+        this._departments.push(employee);
+    }
+
+
     addEmployee(username, salary, position, department) {
-        return 5;
+        if (username === "" || username === null || username === undefined
+            || salary < 0
+            || position === "" || position === null || position === undefined
+            || department === "" || department === null || department === undefined) {
+            throw new Error("Invalid input!");
+        }
+        let empDepartment = {
+            username,
+            salary,
+            position,
+            department
+        };
+        this.departments.push(empDepartment);
+        return `New employee is hired. Name: ${username}. Position: ${position}`;
     }
 }
 
-function solve(a, b) {
-    let newObj = Object.create(a, {
-        address: {
-            writable: true,
-            configurable: true,
-            enumerable: true,
-            value: "Sofia"
-        }
-    });
-    console.log(newObj.age);
-}
-
-let obj1 = { name: "Toni", age: 25 }
-
-
-solve(obj1);
+let cmp = new Company();
+cmp.addEmployee("Stanimir", -2000, "engineer", "Construction");
