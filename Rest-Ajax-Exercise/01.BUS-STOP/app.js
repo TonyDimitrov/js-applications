@@ -9,19 +9,33 @@ function getInfo() {
         console.log("T");
         let inputId = document.getElementById("stopId");
         let val = inputId.value
-        let busInfo = await busApiCaller(val);
-        displayBusInfo(busInfo)
+        busApiCaller(val);
+        inputId.value = "";
     }
 };
-async function busApiCaller(busId) {
-    return await fetch(`https://judgetests.firebaseio.com/businfo/${busId}.json`).then(f => f.json());
+function busApiCaller(busId) {
+
+    let uri = `https://judgetests.firebaseio.com/businfo/${busId}.json`;
+
+    fetch(uri)
+        .then(resp => {
+            if (resp.ok) {
+                displayBusInfo(resp.json());
+            } else {
+                displayBusInfo(undefined, "Error");
+                throw new Error(`No bus stop with id: '${busId}' found. Server returned: `  + resp.status);
+            }
+        })
+        .catch(err => console.log(err));
+
 }
 
-function displayBusInfo(busInfo) {
-    if (busInfo && busInfo.buses) {
-        let stopDiv = document.getElementById("stopName");
-        stopDiv.innerText = busInfo.name;
+async function displayBusInfo(busInfo, error) {
+    busInfo = await busInfo;
+    let stopDiv = document.getElementById("stopName");
 
+    if (busInfo && busInfo.buses) {
+        stopDiv.innerText = busInfo.name;
         let buses = [];
         for (const busId in busInfo.buses) {
             if (busInfo.buses.hasOwnProperty(busId)) {
@@ -37,6 +51,11 @@ function displayBusInfo(busInfo) {
         let ulBuses = document.getElementById("buses");
         ulBuses.innerHTML = "";
         ulBuses.appendChild(busFrag);
+    }
+    else {
+        let ulBuses = document.getElementById("buses");
+        ulBuses.innerHTML = "";
+        stopDiv.innerText = error;
     }
 
 }
