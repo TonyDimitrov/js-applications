@@ -36,10 +36,11 @@ function solve() {
 
         busInfo.name = busDepart.name;
         busInfo.next = busDepart.next;
-
-        info.innerHTML = busInfo.name;
+        
         btnDepart.disabled = btnDepart.disabled ? false : true;
         btnArrive.disabled = btnArrive.disabled ? false : true;
+
+        info.innerHTML = btnDepart.disabled ? `Next stop ${busInfo.name}` : `Arriving at ${busInfo.name}`;
     }
 
     return {
