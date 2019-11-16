@@ -6,7 +6,7 @@ function attachEvents() {
     btnLoad.addEventListener("click", getPhones);
 
     let btnCrate = document.getElementById("btnCreate");
-    btnCreate.addEventListener("click", addPhone); 
+    btnCreate.addEventListener("click", addPhone);
 
     async function getPhones() {
         let phones = await fetch("https://phonebook-nakov.firebaseio.com/phonebook.json")
@@ -36,7 +36,8 @@ function attachEvents() {
         let impPhone = document.getElementById("phone");
         let postBody = {};
         if (impPerson.value && impPhone.value) {
-            postBody[impPerson.value] = impPhone.value;
+            postBody.person = impPerson.value;
+            postBody.phone = impPhone.value;
             let postRequest = await fetch("https://phonebook-nakov.firebaseio.com/phonebook.json", {
                 method: 'POST',
                 headers: {
@@ -53,9 +54,8 @@ function attachEvents() {
     function buildList(phones) {
         let liElements = Object.keys(phones).map(e => {
             let inrObj = phones[e];
-            let inrKey = Object.keys(inrObj)[0];
-            let inrValue = inrObj[inrKey]
-            let li = document.createElement("li"); li.innerText = `${inrKey}: ${inrValue}`;
+            let li = document.createElement("li");
+            li.innerText = `${inrObj.person} : ${inrObj.phone}`;
             let btn = document.createElement("button");
             btn.value = e;
             btn.innerText = "Delete";
