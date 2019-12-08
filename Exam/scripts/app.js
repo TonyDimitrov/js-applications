@@ -1,7 +1,7 @@
 import { get, post, put, del } from './requester.js';
 
 const userKinveyModule = 'user';
-const collectionKinveyModule = 'appdata';
+const teamKinveyModule = 'appdata';
 
 // const partials = {
 //     header: './templates/common/header.hbs',
@@ -16,11 +16,13 @@ const app = Sammy('#root', function () {
         ctx.loggedIn = loggedIn();
 
         if (ctx.loggedIn) {
-            get(collectionKinveyModule, 'recipes', 'Kinvey')
+            get(teamKinveyModule, 'treks', 'Kinvey')
                 .then(res => {
-                    console.log(res);
-                    ctx.names = getUserFullName();
-                    ctx.recipes = res;
+                    ctx.names = getUsername();
+                    ctx.treks = res;
+                    ctx.hasTreks = [...res].length > 0 ? true : false;
+                    console.log(ctx.hasTreks);
+
                     this.loadPartials(setCommmonPartials())
                         .partial('./templates/home.hbs');
 
@@ -30,33 +32,15 @@ const app = Sammy('#root', function () {
                 .partial('./templates/home.hbs');
         }
 
-    });
+        console.log('outside');
+        // this.loadPartials(setCommmonPartials())
+        //     .partial('./templates/home.hbs');
 
-    this.get('/share', function (ctx) {
-        ctx.loggedIn = loggedIn();
-        ctx.names = getUserFullName();
-
-        this.loadPartials(setCommmonPartials())
-            .partial('./templates/forms/share.hbs');
-
-    });
-
-    this.post('/share', function (ctx) {
-        ctx.loggedIn = loggedIn();
-        ctx.names = getUserFullName();
-
-        let { meal, ingredients, prepMethod, description, foodImageURL, category } = ctx.params;
-        ingredients = ingredients.split(', ');
-
-        post(collectionKinveyModule, 'recipes', { meal, ingredients, prepMethod, description, foodImageURL, category, likesCounter: 0, categoryImageURL: getCetegoryImage(category) }, 'Kinvey')
-            .then(res => {
-                ctx.redirect('/');
-            }).catch(console.log);
     });
 
     this.get('/register', function (ctx) {
         ctx.loggedIn = loggedIn();
-        ctx.names = getUserFullName();
+        ctx.names = getUsername();
 
         this.loadPartials(setCommmonPartials())
             .partial('./templates/forms/register.hbs');
@@ -77,14 +61,17 @@ const app = Sammy('#root', function () {
                 .then(res => {
                     setSessionStorage(res);
                     ctx.loggedIn = loggedIn();
-                    ctx.names = getUserFullName();
+                    ctx.names = getUsername();
                     ctx.redirect('/');
-                }).catch(displayError('User already exists!'));
+                }).then(displaySucces('You have successfuly register!'))
+                .catch(console.log);
+        } else {
+            displayError('Invalid input!');
         }
-     //   ctx.redirect('/register');
     });
 
     this.get('/login', function (ctx) {
+
         this.loadPartials(setCommmonPartials())
             .partial('./templates/forms/login.hbs');
     });
@@ -97,9 +84,13 @@ const app = Sammy('#root', function () {
                 .then(res => {
                     setSessionStorage(res);
                     ctx.redirect('/');
-                }).catch(console.log);
+                })
+                .then(displaySucces('You have successfuly logged in!'))
+                .catch(console.log);
+        } else {
+            displayError('Invalid input!');
         }
-        ctx.redirect('/login');
+
     });
 
     this.get('/logout', function (ctx) {
@@ -109,33 +100,48 @@ const app = Sammy('#root', function () {
                 console.log(res);
                 destroySession();
                 ctx.redirect('/');
-            }).catch(console.log);
+            }).then(displaySucces('You have successfuly logged in!'))
+            .catch(displayError(console.log));
     });
-    //TODO
-    this.get('/recipe/:id', function (ctx) {
 
-        let recipeId = ctx.params.id.substring(1);
-
-        get(collectionKinveyModule, `recipes/${recipeId}`)
-            .then(res => {
-
-                ctx.creator = (getUserId() === res._acl.creator);
-                console.log(getUserId());
-                console.log(res._acl.creator);
-                ctx.loggedIn = loggedIn();
-                ctx.names = getUserFullName();
-                ctx.recipe = res;
-                this.loadPartials(setCommmonPartials())
-                    .partial('../templates/recipe.hbs');
-            });
+    this.get('/create', function (ctx) {
+        ctx.names = getUsername();
+        ctx.loggedIn = loggedIn();
+        this.loadPartials(setCommmonPartials())
+        .partial('./templates/forms/create.hbs');
     });
+    
+    this.post('/create', function (ctx) {
+
+        let { location, dateTime, description, imageURL } = ctx.params;
+        if (location && dateTime && description && imageURL) {
+            post(teamKinveyModule, 'treks', { location, dateTime, description, imageURL , organizer: getUsername(), likes:0}, 'Kinvey')
+                .then(res => {
+                  //  setSessionStorage(res);
+                    ctx.redirect('/');
+                })
+                .then(displaySucces('You have successfuly create a trek!'))
+                .catch(console.log);
+        } else {
+            displayError('Invalid input!');
+        }
+
+    });
+
+    this.get('/details/:id', function (ctx) {
+        ctx.loggedIn = loggedIn();
+        ctx.names = getUsername();
+        this.loadPartials(setCommmonPartials())
+        .partial('../templates/trek-info.hbs');
+    });
+
 });
 
 
 function setSessionStorage(res) {
     sessionStorage.setItem('authtoken', res._kmd.authtoken);
     sessionStorage.setItem('userId', res._id);
-    sessionStorage.setItem('fullName', `${res.firstName} ${res.lastName}`);
+    sessionStorage.setItem('fullName', res.username);
 }
 
 function setCommmonPartials() {
@@ -146,14 +152,14 @@ function setCommmonPartials() {
 }
 
 function destroySession() {
-    sessionStorage.clear();
+    return sessionStorage.clear();
 }
 
 function loggedIn() {
     return sessionStorage.getItem('authtoken') !== null;
 }
 
-function getUserFullName() {
+function getUsername() {
     return sessionStorage.getItem('fullName');
 }
 
@@ -165,23 +171,18 @@ function getUserId() {
     return sessionStorage.getItem('userId');
 }
 
-function getCetegoryImage(categoryName) {
-    let images = {
-        "Grain Food": "https://cdn.pixabay.com/photo/2014/12/11/02/55/corn-syrup-563796__340.jpg",
-        "Milk, cheese, eggs and alternatives": "https://image.shutterstock.com/image-photo/assorted-dairy-products-milk-yogurt-260nw-530162824.jpg",
-        "Vegetables and legumes/beans CATEGORY": "https://cdn.pixabay.com/photo/2017/10/09/19/29/eat-2834549__340.jpg",
-        "Fruits CATEGORY": "https://cdn.pixabay.com/photo/2017/06/02/18/24/fruit-2367029__340.jpg",
-        "Lean meats and poultry, fish... CATEGORY": "https://t3.ftcdn.net/jpg/01/18/84/52/240_F_118845283_n9uWnb81tg8cG7Rf9y3McWT1DT1ZKTDx.jpg"
-    }
-
-    return images[categoryName];
-}
-
 function displayError(message) {
     const errorBox = document.getElementById('errorBox');
     errorBox.style.display = 'block';
     errorBox.textContent = message;
-    setTimeout(() => {errorBox.style.display = 'none'}, 2000);
+    setTimeout(() => { errorBox.style.display = 'none' }, 2000);
+}
+
+function displaySucces(message) {
+    const errorBox = document.getElementById('successBox');
+    errorBox.style.display = 'block';
+    errorBox.textContent = message;
+    setTimeout(() => { errorBox.style.display = 'none' }, 2000);
 }
 
 app.run();
